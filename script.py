@@ -7,7 +7,7 @@ from pathlib import Path
 dossier = Path.cwd()
 
 
-# On définit un chemin vers un fichier hello.txt dans ce dossier
+# On définit un chemin vers un fichier hello.txt dans ce dossier helo
 fichier =dossier/"demo.txt"
 
 
