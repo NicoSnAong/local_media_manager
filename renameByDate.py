@@ -65,7 +65,7 @@ def exiftool_json(path: Path) -> Optional[dict]:
     except Exception:
         return None
 
-def parse_date_and_tz(s: str) -> (Optional[datetime], str):
+def parse_date_and_tz(s: str) -> tuple[Optional[datetime], str]:
     """
     Tente de parser une date et retourne aussi le fuseau formaté.
     """
@@ -113,7 +113,7 @@ def parse_date_and_tz(s: str) -> (Optional[datetime], str):
 
     return None, tz_str
 
-def choose_datetime(meta: Optional[dict]) -> (Optional[datetime], str):
+def choose_datetime(meta: Optional[dict]) -> tuple[Optional[datetime], str]:
     """Choisit la meilleure date et retourne aussi le fuseau détecté."""
     if not meta:
         return None, "(none)"
@@ -151,7 +151,8 @@ def unique_target(target: Path) -> Path:
 def main(dry_run: bool):
     check_exiftool()
     cwd = Path.cwd()
-    me = Path(__file__).name
+    # __file__ peut être absent (exécution interactive VS Code) → repli sur sys.argv[0]
+    me = Path(globals().get("__file__", sys.argv[0] if sys.argv else "")).name
 
     print(f"📂 Dossier: {cwd}")
     print("💡 Mode:", "DRY-RUN (simulation)" if dry_run else "RENOMMAGE RÉEL")
