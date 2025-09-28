@@ -1,0 +1,8 @@
+*.txt
+*.jpeg
+*.jpg
+*.mp3
+*.mp4
+*.flac
+*.aav
+/backupAndSave/
