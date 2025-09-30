@@ -24,9 +24,9 @@ def parse_event(stem: str) -> str | None:
 def classify(ext: str) -> tuple[str, str|None]:
     e = ext.lower().lstrip(".")
     if e in IMG_COMP_EXT:
-        return ("images", "compressé")
+        return ("images", "compressed")
     if e in RAW_EXT:
-        return ("images", "brute")
+        return ("images", "raw")
     if e in VIDEO_EXT:
         return ("video", None)
     if e in AUDIO_EXT:
@@ -35,7 +35,7 @@ def classify(ext: str) -> tuple[str, str|None]:
 
 def target_dir(media: str, img_kind: str|None, event: str) -> Path:
     if media == "images":
-        return TO_PROCESS_DIR / "images" / img_kind / event  # img_kind: compressé|brute
+        return TO_PROCESS_DIR / "images" / img_kind / event  # img_kind: compressed|raw
     if media == "video":
         return TO_PROCESS_DIR / "video" / event
     if media == "audio":

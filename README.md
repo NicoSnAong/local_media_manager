@@ -21,3 +21,27 @@ Pipeline d’ingestion & tri des médias (images/vidéos/audio), avec index glob
 
 ## GUI (à venir)
 - `app/gui/app.py` (Tkinter).
+
+
+## Project structure
+/projet/
+├─ app/
+│  ├─ scripts/
+│  │  ├─ rename_with_index.py
+│  │  ├─ tri_and_move_from_inbox.py
+│  │  └─ validate_and_mirror_to_library.py
+│  ├─ gui/
+│  │  ├─ app.py
+│  │  ├─ views/
+│  │  ├─ services/
+│  │  └─ utils/
+│  └─ state/
+│     └─ increment_index.csv
+├─ inbox/
+├─ to process/
+│  ├─ images/
+│  │  ├─ compressed/
+│  │  └─ raw/
+│  ├─ video/
+│  └─ audio/
+└─ library/

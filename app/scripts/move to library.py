@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys, shutil
 
-TO_PROCESS_COMP = Path("/to process/images/compressé")
+TO_PROCESS_COMP = Path("/to process/images/compressed")
 LIBRARY_DIR = Path("/library")
 
 def unique_path(base: Path) -> Path:
