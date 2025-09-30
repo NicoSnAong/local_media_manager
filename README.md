@@ -1,4 +1,4 @@
-# Media Manager
+# Media Manager dev
 
 Pipeline d’ingestion & tri des médias (images/vidéos/audio), avec index global par `(event, year)`.
 
