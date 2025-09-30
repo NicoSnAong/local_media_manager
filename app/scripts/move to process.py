@@ -5,8 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 import re, shutil, sys
 
-INBOX_DIR = Path("/inbox")
-TO_PROCESS_DIR = Path("/to process")
+# on remonte depuis app/scripts jusqu’à F:\Medias
+ROOT_DIR = Path(__file__).resolve().parents[2]
+
+INBOX_DIR      = ROOT_DIR / "inbox"
+TO_PROCESS_DIR = ROOT_DIR / "to process"
+LIBRARY_DIR    = ROOT_DIR / "library"
+STATE_DIR      = ROOT_DIR / "app" / "state"
+STATE_CSV      = STATE_DIR / "increment_index.csv"
 
 # extensions
 RAW_EXT = {"cr2","cr3","nef","arw","dng","raf","orf","rw2","srw","pef"}

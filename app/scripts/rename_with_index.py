@@ -36,12 +36,14 @@ import sys, subprocess, json, re, csv, os
 from datetime import datetime
 from typing import Optional
 
-# === Chemins FIXES ===
-INBOX_DIR = Path("/inbox")
-STATE_DIR = Path("/projet/app/state")
-STATE_CSV = STATE_DIR / "increment_index.csv"
-TO_PROCESS_DIR = Path("/to process")
-LIBRARY_DIR = Path("/library")
+ROOT_DIR = Path(__file__).resolve().parents[2]
+
+INBOX_DIR      = ROOT_DIR / "inbox"
+TO_PROCESS_DIR = ROOT_DIR / "to process"
+LIBRARY_DIR    = ROOT_DIR / "library"
+STATE_DIR      = ROOT_DIR / "app" / "state"
+STATE_CSV      = STATE_DIR / "increment_index.csv"
+
 
 # === Constantes / outils ===
 DATE_KEYS = [
