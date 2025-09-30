@@ -1,36 +1,23 @@
-# local_media_manager
-- dépendance à installer pour manipuler les Exif, exiftools en Perl 
+# Media Manager
 
-utiliser le script install_exiftool.py une fois a la premiere utilisation du logiciel: ce scriot va : 
+Pipeline d’ingestion & tri des médias (images/vidéos/audio), avec index global par `(event, year)`.
 
-Télécharger l’archive .zip depuis le site officiel ExifTool.
+## Dossiers (externalités)
+- `/inbox` (arrivées)
+- `/to process` (tri en cours)
+- `/library` (validé/archivé)
 
-Extraire le fichier exiftool(-k).exe.
+> Ces dossiers NE font PAS partie du repo. Le code vit dans `/media-manager`.
 
-Le renommer en exiftool.exe.
+## Scripts (CLI)
+1. `python3 app/scripts/rename_with_index.py --event <tag>`
+2. `python3 app/scripts/tri_and_move_from_inbox.py`
+3. (tri manuel)
+4. `python3 app/scripts/validate_and_mirror_to_library.py <event>`
 
-Le placer dans un dossier bin/ à côté de ton script.
+## Index global
+- Stocké dans `app/state/increment_index.csv` (ignoré par Git).
+- Géré **uniquement** par `rename_with_index.py`.
 
-Vérifier que ça marche en affichant la version.
-
-
-à faire pour exif tool  :
-
-Fournis le lien officiel ExifTool (ne redistribue pas toi-même un exécutable douteux).
-
-Vérifie ou explique comment vérifier les hashs.
-
-Documente la dépendance dans ton README → transparence totale.
-
-Laisse le choix : installation manuelle ou automatisée par ton script.
-
-
-1. Source officielle
-
-ExifTool est un projet open source maintenu depuis 20+ ans par Phil Harvey.
-
-Site officiel : https://exiftool.org
-
-Binaires Windows signés disponibles.
-
-Sur Linux/macOS → installation via gestionnaire de paquets (apt, brew) = garanti sûr.
+## GUI (à venir)
+- `app/gui/app.py` (Tkinter).
