@@ -1,63 +1,46 @@
 #!/usr/bin/env python3
 """
-rename_by_date_exiftool_light.py
-Solution minimaliste (1 dépendance : ExifTool)
+rename_by_capture_date.py
+Renomme les fichiers du dossier courant en :
+YYYY-MM-DD_<event>_<increment>.ext
 
-- Renomme tous les fichiers du dossier courant.
-- Format : YYYY-MM-DD_hham(fuseau)
-  Exemple : 2010-07-11_05am(+7), 2010-07-11_09am(none)
-- Pas de secondes, pas de minutes.
-- Si fuseau absent → (none)
-- Si doublons → ajoute _1, _2, ...
+- Date = date de capture (ExifTool). Fallback = date du fichier.
+- Event = obligatoire (--event).
+- Increment = compteur séquentiel, repart à 1 à chaque exécution.
 
 Usage :
-  python rename_by_date_exiftool_light.py --dry-run   # simulation
-  python rename_by_date_exiftool_light.py --run       # renommer pour de vrai
+  python rename_by_capture_date.py --event bali-trip [--dry-run]
 """
 
 from pathlib import Path
-import sys
-import subprocess
+import sys, subprocess, json, re
 from datetime import datetime
-from typing import Optional, List
-import json
-import re
+from typing import Optional
 
-# Champs de date à essayer (ordre de priorité)
-DATE_KEYS: List[str] = [
-    "DateTimeOriginal",
-    "CreateDate",
-    "MediaCreateDate",
-    "TrackCreateDate",
-    "CreationDate",
-    "ModifyDate",
-    "FileCreateDate",
-    "FileModifyDate",
+# Liste des tags ExifTool qui contiennent une date de capture potentielle
+DATE_KEYS = [
+    "DateTimeOriginal", "CreateDate", "MediaCreateDate", "TrackCreateDate",
+    "CreationDate", "ModifyDate", "FileCreateDate", "FileModifyDate",
 ]
 
 INVALID = r'[<>:"/\\|?*]'
-def sanitize(name: str) -> str:
-    """Nettoie les caractères interdits sous Windows."""
-    return re.sub(INVALID, "_", name).rstrip(" .")
+def clean(s: str) -> str:
+    return re.sub(INVALID, "_", s).strip().strip(" ._")
 
-def check_exiftool() -> None:
-    """Vérifie qu'ExifTool est installé et accessible."""
-    try:
-        cp = subprocess.run(["exiftool", "-ver"], capture_output=True, text=True, timeout=5)
-        if cp.returncode != 0:
-            raise RuntimeError(cp.stderr.strip() or "ExifTool indisponible")
-    except FileNotFoundError:
-        raise SystemExit("ExifTool n'est pas trouvé dans le PATH. Installe-le puis réessaie.")
-    except Exception as e:
-        raise SystemExit(f"Impossible de lancer ExifTool : {e}")
+def argval(flag: str) -> Optional[str]:
+    if flag in sys.argv:
+        i = sys.argv.index(flag)
+        if i+1 < len(sys.argv):
+            return sys.argv[i+1]
+    return None
+
+def hasflag(flag: str) -> bool:
+    return flag in sys.argv
 
 def exiftool_json(path: Path) -> Optional[dict]:
-    """Retourne les métadonnées ExifTool en JSON (ou None)."""
     try:
-        cp = subprocess.run(
-            ["exiftool", "-j", "-n", str(path)],
-            capture_output=True, text=True, timeout=20
-        )
+        cp = subprocess.run(["exiftool", "-j", "-n", str(path)],
+                            capture_output=True, text=True, timeout=15)
         if cp.returncode != 0 or not cp.stdout.strip():
             return None
         data = json.loads(cp.stdout)
@@ -65,141 +48,67 @@ def exiftool_json(path: Path) -> Optional[dict]:
     except Exception:
         return None
 
-def parse_date_and_tz(s: str) -> tuple[Optional[datetime], str]:
-    """
-    Tente de parser une date et retourne aussi le fuseau formaté.
-    """
-    s = s.strip()
-    tz_str = "(none)"
-
-    # Cas ISO avec Z (UTC)
-    if s.endswith("Z"):
-        tz_str = "(+0)"
-        try:
-            dt = datetime.strptime(s[:-1], "%Y-%m-%dT%H:%M:%S")
-            return dt, tz_str
-        except Exception:
-            pass
-
-    # Cas avec offset explicite (+HH:MM ou -HH:MM)
-    if "+" in s or "-" in s[-6:]:
-        parts = s.split()
-        if len(parts) >= 2:
-            base = parts[0] + " " + parts[1][:8]  # date + HH:MM:SS
-            tz_raw = parts[1][8:]
-
-            # Normalisation fuseau
-            if tz_raw:
-                if tz_raw.endswith(":00"):  # ex: +07:00
-                    tz_str = f"({tz_raw[:-3]})"
-                else:  # ex: +05:30 → (+5h30)
-                    sign = tz_raw[0]
-                    h, m = tz_raw[1:].split(":")
-                    tz_str = f"({sign}{int(h)}h{m})"
-
+def extract_capture_date(path: Path) -> str:
+    meta = exiftool_json(path)
+    raw = None
+    if meta:
+        for k in DATE_KEYS:
+            v = meta.get(k)
+            if v:
+                raw = str(v).strip()
+                break
+    if raw:
+        raw = re.sub(r'\.\d+$', '', raw)
+        for f in ("%Y:%m:%d %H:%M:%S", "%Y-%m-%d %H:%M:%S",
+                  "%Y:%m:%d", "%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"):
             try:
-                dt = datetime.strptime(base, "%Y:%m:%d %H:%M:%S")
-                return dt, tz_str
+                dt = datetime.strptime(raw, f)
+                return dt.strftime("%Y-%m-%d")
             except Exception:
-                pass
+                continue
+    # fallback = date de modification fichier
+    dt = datetime.fromtimestamp(path.stat().st_mtime)
+    return dt.strftime("%Y-%m-%d")
 
-    # Cas simple sans tz
-    for f in ["%Y:%m:%d %H:%M:%S", "%Y-%m-%d %H:%M:%S"]:
-        try:
-            dt = datetime.strptime(s, f)
-            return dt, tz_str
-        except Exception:
-            continue
+def main():
+    event = argval("--event")
+    if not event:
+        print("❌ Argument requis: --event <slug> (ex: --event bali-trip)")
+        sys.exit(1)
+    dry = hasflag("--dry-run")
 
-    return None, tz_str
-
-def choose_datetime(meta: Optional[dict]) -> tuple[Optional[datetime], str]:
-    """Choisit la meilleure date et retourne aussi le fuseau détecté."""
-    if not meta:
-        return None, "(none)"
-    for key in DATE_KEYS:
-        val = meta.get(key)
-        if not val:
-            continue
-        dt, tz = parse_date_and_tz(str(val))
-        if dt:
-            return dt, tz
-    return None, "(none)"
-
-def filesystem_date(path: Path) -> datetime:
-    """Fallback : date de modification du fichier (mtime)."""
-    return datetime.fromtimestamp(path.stat().st_mtime)
-
-def name_fmt(dt: datetime, tz: str) -> str:
-    """Format final : YYYY-MM-DD_hham(fuseau)"""
-    s = dt.strftime("%Y-%m-%d_%I%p")  # ex. 2010-07-11_05AM
-    s = s[:-2] + s[-2:].lower()       # am/pm en minuscules
-    return f"{s}{tz}"
-
-def unique_target(target: Path) -> Path:
-    """Ajoute _1, _2... en cas de doublon."""
-    if not target.exists():
-        return target
-    base, ext = target.stem, target.suffix
-    i = 1
-    while True:
-        cand = target.with_name(f"{base}_{i}{ext}")
-        if not cand.exists():
-            return cand
-        i += 1
-
-def main(dry_run: bool):
-    check_exiftool()
+    event_slug = clean(event.replace(" ", "-").lower())
     cwd = Path.cwd()
-    # __file__ peut être absent (exécution interactive VS Code) → repli sur sys.argv[0]
-    me = Path(globals().get("__file__", sys.argv[0] if sys.argv else "")).name
+    files = [p for p in sorted(cwd.iterdir()) if p.is_file() and p.name != Path(__file__).name]
 
-    print(f"📂 Dossier: {cwd}")
-    print("💡 Mode:", "DRY-RUN (simulation)" if dry_run else "RENOMMAGE RÉEL")
-    print("————————————————————————————————————————")
+    print(f"📂 Dossier : {cwd}")
+    print(f"🏷️  Événement : {event_slug}")
+    print("🔎 Mode :", "DRY-RUN (simulation)" if dry else "RENOMMAGE")
 
-    files = [p for p in sorted(cwd.iterdir()) if p.is_file() and p.name not in {me, "exiftool.exe"}]
-
+    idx = 1
     for p in files:
-        meta = exiftool_json(p)
-        dt, tz = choose_datetime(meta)
+        date_str = extract_capture_date(p)
+        base = f"{date_str}_{event_slug}_{idx}"
+        newname = clean(base) + p.suffix.lower()
+        target = cwd / newname
 
-        if not dt:
-            dt = filesystem_date(p)
-            tz = "(none)"
-            print(f"↩️  {p.name}: pas de date capture → fallback fichier ({dt})")
+        j = 1
+        while target.exists():
+            target = cwd / (clean(base) + f"_{j}" + p.suffix.lower())
+            j += 1
 
-        newbase = name_fmt(dt, tz)
-        newname = sanitize(f"{newbase}{p.suffix.lower()}")
-        target = unique_target(p.with_name(newname))
-
-        if dry_run:
+        if dry:
             print(f"[DRY] {p.name}  →  {target.name}")
         else:
             try:
-                print(f"[DO ] {p.name}  →  {target.name}")
                 p.rename(target)
+                print(f"[OK ] {p.name}  →  {target.name}")
             except Exception as e:
-                print(f"   ⚠️  Échec: {e}")
+                print(f"[ERR] {p.name}  →  {e}")
+
+        idx += 1
 
 if __name__ == "__main__":
-    dry = True
-    if len(sys.argv) > 1 and sys.argv[1] in ("--run", "--do"):
-        dry = False
-    main(dry_run=dry)
+    main()
 
 
-# ——————————————————————————————————————————————————————————————
-# 📜 RÈGLES DE GESTION DES DATES ET FUSEAUX
-#
-# - (Z) → (+0)
-# - +HH:00 / -HH:00 → (+H) / (-H)
-# - +HH:MM (minutes ≠ 00) → (+HhMM) / (-HhMM)  (pas de ":")
-# - Pas de fuseau → (none)
-#
-# Exemples :
-#   "2010:07:11 05:52:00+07:00"  →  2010-07-11_05am(+7)
-#   "2010:07:11 05:52:00+05:30"  →  2010-07-11_05am(+5h30)
-#   "2010:07:11 05:52:00Z"       →  2010-07-11_05am(+0)
-#   "2010:07:11 05:52:00"        →  2010-07-11_05am(none)
-# ——————————————————————————————————————————————————————————————
