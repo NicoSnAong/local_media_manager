@@ -6,7 +6,7 @@ from pathlib import Path
 import sys, shutil
 
 # on remonte depuis app/scripts jusqu’à F:\Medias
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[3]
 
 INBOX_DIR      = ROOT_DIR / "inbox"
 TO_PROCESS_DIR = ROOT_DIR / "to process"

@@ -36,7 +36,7 @@ import sys, subprocess, json, re, csv, os
 from datetime import datetime
 from typing import Optional
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[3]
 
 INBOX_DIR      = ROOT_DIR / "inbox"
 TO_PROCESS_DIR = ROOT_DIR / "to process"
